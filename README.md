@@ -6,6 +6,8 @@ A .NET C# class library that implements the **Multipurpose Display Controller** 
 facilitating communication between a computer and a Daktronics Galaxy (and others) LED pixel display over the network, 
 using a proprietary TCP-based protocol.
 
+[Read more about this project on CodeProject.](http://www.codeproject.com/Articles/988528/Multipurpose-Display-Controller-MDC-NET-class-libr)
+
 ![Photo of LED sign](docs/example-20.jpg)
 
 System Requirements
@@ -44,19 +46,19 @@ Module Design
 ### Display
 The `Display` class is the module’s controller. Its methods wrap a subset of the available MDC commands. Simple use of the class looks like:
 
-	/// <summary>
-	/// Clears the display.
-	/// </summary>
-	public void Clear()
-	{
-		using(var display = new Display(_host, _port, _index))
-		{
-			display.Connect();
-			display.Identify();
-			display.Blank();
-			display.Disconnect();
-		}
-	}
+    /// <summary>
+    /// Clears the display.
+    /// </summary>
+    public void Clear()
+    {
+        using(var display = new Display(_host, _port, _index))
+        {
+            display.Connect();
+            display.Identify();
+            display.Blank();
+            display.Disconnect();
+        }
+    }
 
 An `Identify` command must be sent at the beginning of each transmission. It both checks the state of the display, and tells the sign which version of the MDC protocol will be used.
 

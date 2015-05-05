@@ -1,0 +1,142 @@
+<ul class="download">
+    <li><a href="https://github.com/TwoRedCells/MDC/archive/master.zip">Download source</a></li>
+    <li><a href="https://github.com/TwoRedCells/MDC">MDC on GitHub</a></li>
+</ul>
+<h2>Introduction</h2>
+<p>Daktronics is a market leader in LED displays. You see them used on subway platforms, sports venues, and in front of schools, to name just a few. These displays use a proprietary protocol called Multipurpose Display Protocol (MDC) that exchanges binary messages over TCP sockets. This article presents a .NET class library that implements version 1 of this protocol.</p>
+<h2>Requirements</h2>
+<ul>
+    <li>This class library targets version 3.5 of the .NET Framework.</li>
+    <li>Only <code>System.dll</code> and <code>System.Core.dll</code> are required</li>
+</ul>
+<h2>Background</h2>
+<p>I&#39;m currently working on a project for a major Canadian public transit authority, for which an LED display is used at the entrance to a train yard to visually communicate messages to operators by the yard dispatcher.</p>
+<p><img alt="Photo of sign" src="https://github.com/TwoRedCells/MDC/raw/master/docs/example-20.jpg" /></p>
+<p>The hardware chosen for this task is a Daktronics Galaxy AF-3200 display (red LED, 8mm pitch). The device is a network-connected embedded system that uses IP for connectivity. Specifically, it listens on tcp/3001 for commands, and replies to any commands it receives.</p>
+<p>The manufacturer offers three ways to communicate with the display hardware.</p>
+<ul>
+    <li>Their Venus 1500 GUI sign management software</li>
+    <li>Their Venus 1500 SDK, an ActiveX (COM) component</li>
+    <li>Low-level communication using the MDC (or M2) protocol.</li>
+</ul>
+<p>I opted for the low-level option. I couldn&#39;t risk use of an unknown component in this high-availability system.</p>
+<h2>Multipurpose Display Controller Protocol</h2>
+<p>This module is a .NET class library that implements a high-level wrapper for a subset of the low-level MDC protocol:</p>
+<ol>
+    <li>
+        <p>The sign (server role) accepts TCP connections on port 3001.</p>
+    </li>
+    <li>
+        <p>A client makes a socket connection with the sign.</p>
+    </li>
+    <li>
+        <p>All communications to and from the sign consist of a 6-byte header and (if required), a variable-length body. Both the header and body include a 1-byte checksum.</p>
+    </li>
+    <li>
+        <p>The client sends an <code>IDENTIFY</code> request (6 + 0 bytes).</p>
+    </li>
+    <li>
+        <p>The sign responds (6 + 3 bytes).</p>
+    </li>
+    <li>
+        <p>The client sends a <code>COMMAND</code> to the sign (6 + x bytes).</p>
+    </li>
+    <li>
+        <p>The sign accepts or rejects the command and responds with a confirmation (6 + x bytes).</p>
+    </li>
+</ol>
+<p><em>This article does not detail the MDC protocol. The MDC protocol and command set are documented in detail in the compiled help file, MDCHelp.chm, available from the manufacturer. The following is a brief summary for context only.</em></p>
+<p>The sign supports two command protocols, <strong>MDC</strong> and <strong>M2</strong> (short for MDC version 3)<a href="#_ftn1" name="_ftnref1" title=""><u>[1]</u></a>.</p>
+<ul>
+    <li>
+        <p>MDC (version 1) is primarily a binary language, consisting of a header and a terse command.</p>
+    </li>
+    <li>
+        <p>M2 (version 3) is more complex, consisting of a binary header and exchange of XML files. M2 is a superset of MDC, and in theory, commands in both protocols can be used (untested).</p>
+    </li>
+</ul>
+<p>MDC version 1 was selected for this project because:</p>
+<ul>
+    <li>
+        <p>It supports all of the required functionality.</p>
+    </li>
+    <li>
+        <p>It is considerably simpler.</p>
+    </li>
+    <li>
+        <p>It requires minimal bandwidth, yet includes error detection.&nbsp;</p>
+    </li>
+</ul>
+<hr align="left" size="1" width="33%" />
+<p><a href="#_ftnref1" name="_ftn1" title=""><u>[1]</u></a> Yes, that is pretty confusing. Version 2 was used internally at Daktronics and was not publicly released. Version 3 is version 2 of version 2. Clearer?</p>
+<h2>Using the Code</h2>
+<p><a href="https://github.com/TwoRedCells/MDC/raw/master/docs/Daktronics.png"><img alt="Class diagram" src="https://github.com/TwoRedCells/MDC/raw/master/docs/Daktronics.png" style="width: 640px; height: 602px;" /></a></p>
+<h3>Display</h3>
+<p>The <code>Display</code> class is the module&rsquo;s controller. Its methods wrap a subset of the available MDC commands. Simple use of the class looks like:</p>
+<pre lang="cs">
+/// &lt;summary&gt;
+/// Clears the display.
+/// &lt;/summary&gt;
+public void Clear()
+{
+&nbsp;&nbsp;&nbsp; using(var display = new Display(_host, _port, _index))
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display.Connect();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display.Identify();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display.Blank();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; display.Disconnect();
+&nbsp;&nbsp;&nbsp; }
+}
+</pre>
+<p>An <code>Identify</code> command must be sent at the beginning of each transmission. It both checks the state of the display, and tells the sign which version of the MDC protocol will be used.</p>
+<h3>Messages, Frames, Lines</h3>
+<p>The data sent to the sign to display a message consists of a <em>message</em>, <em>frame(s)</em>, and <em>line(s)</em>. These are represented by the <code>Message</code>, <code>Frame</code>, and <code>Line </code>classes.</p>
+<p>A <em>message</em> consists of one or more <em>frames</em>. The message has a filename, and is stored in the device&#39;s non-volatile memory.</p>
+<p>Each <em>frame</em> contains one or more <em>lines</em>, and the <strong>amount of time</strong> to show the frame.</p>
+<p>Each <em>line</em> includes <strong>text</strong>, <strong>font</strong>, <strong>justification</strong>, <strong>intensity</strong>, and entry/exit/flash <strong>effect</strong> details. Where appropriate, these are represented by enums.</p>
+<h3>Example</h3>
+<p>This example demonstrates sending a simple message to the display (the <code>_display</code> field is already instantiated):</p>
+<p>There are several steps in sending a message to the display.</p>
+<ol>
+    <li><code>Connect</code>&nbsp;to the display.</li>
+    <li>Initiate communication with <code>Identify</code>.</li>
+    <li>Construct a message, and <code>SendMessage</code>, to declare it.</li>
+    <li>Define the actual content with <code>SendFileBlock</code>.</li>
+    <li>Show the message with <code>RunMessage</code>.</li>
+</ol>
+<pre lang="cs">
+/// &lt;summary&gt;
+/// Shows a &quot;STOP Contact YCC&quot; message.
+/// &lt;/summary&gt;
+public void StopContact()
+{
+&nbsp;&nbsp;&nbsp; var message = new Message(&quot;TTC&quot;)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; new Frame
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; new Line(1, &quot;STOP&quot;, Fonts.MediumFixed, Justifications.Centre),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; new Line(2, &quot;Contact YCC&quot;, Fonts.MediumVariable, Justifications.Centre),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; };
+&nbsp;&nbsp;&nbsp; _display.Connect();
+&nbsp;&nbsp;&nbsp; _display.Identify();
+&nbsp;&nbsp;&nbsp; _display.SendMessage(message);
+&nbsp;&nbsp;&nbsp; _display.SendFileBlock(message);
+&nbsp;&nbsp;&nbsp; _display.RunMessage(message);
+&nbsp;&nbsp;&nbsp; _display.Disconnect();
+}
+</pre>
+<h2>Internals</h2>
+<p>The <code>Message</code>, <code>Frame</code>, and <code>Line </code>classes are containers for <code>Frames</code>, <code>Lines</code>, and text/attributes, accordingly. Each implements a <code>Serialize() </code>method that formats its contents appropriately for the protocol. These are chained so that a single call to <code>Message.Serialize() </code>prepares a ready-to-use message,</p>
+<p>The work of communication is performed by the <code>Display</code> class. It abstracts sending/receiving of messages to a high-level. The System.Net.Sockets.TcpClient class is used to connect to the sign at the low-level.</p>
+<p>Only the features required for this project are implemented. If you require&nbsp;development for additional features for your project, please contact me.</p>
+<h2>Notes</h2>
+<ul>
+    <li>I am not affiliated with Daktronics.</li>
+    <li>The information and opinions presented here are my own, and are not necessarily those of Daktronics.</li>
+    <li>For hardware support, contact the manufacturer.</li>
+</ul>
+<h2>History</h2>
+<ul>
+    <li>May 5, 2015: Article published</li>
+</ul>
