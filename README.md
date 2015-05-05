@@ -37,6 +37,8 @@ MDC version 1 is preferred for projects when possible because:
 Module Design
 -------------
 
+![Display Driver public objects](docs/Daktronics.png)
+
 ### Display
 The `Display` class is the module’s controller. Its methods wrap a subset of the available MDC commands. Simple use of the class looks like:
 
