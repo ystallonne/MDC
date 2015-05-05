@@ -37,8 +37,8 @@ MDC version 1 is preferred for projects when possible because:
 Module Design
 -------------
 
- ### Display
-The `Display` class is the module’s controller. Its methods wrap a subset of the available MDC commands. Simple use of the class looks like:
+### Display
+The `Display` class is the moduleâ€™s controller. Its methods wrap a subset of the available MDC commands. Simple use of the class looks like:
 
 	/// <summary>
 	/// Clears the display.
@@ -67,11 +67,11 @@ Each line includes text, font, justification, intensity, and entry/exit/flash ef
 
 This example demonstrates sending a simple message to the display *(the _display field is already instantiated)*:
 There are several steps in sending a message to the display.
-1.	Connect to the display.
-2.	Initiate communication with Identify.
-3.	Construct a message, and SendMessage, to declare it.
-4.	Define the actual content with SendFileBlock.
-5.	Show the message with RunMessage.
+1. Connect to the display.
+2. Initiate communication with Identify.
+3. Construct a message, and SendMessage, to declare it.
+4. Define the actual content with SendFileBlock.
+5. Show the message with RunMessage.
 
 
     /// <summary>
