@@ -6,6 +6,8 @@ A .NET C# class library that implements the **Multipurpose Display Controller** 
 facilitating communication between a computer and a Daktronics Galaxy (and others) LED pixel display over the network, 
 using a proprietary TCP-based protocol.
 
+![Photo of LED sign](docs/example-20.jpg)
+
 System Requirements
 -------------------
 * The .NET Framework 3.5 redistributable (or later) is required.
